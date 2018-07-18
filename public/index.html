@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/rxjs/5.4.0/Rx.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ramda/0.22.1/ramda.min.js"></script>
+</head>
+
+<body>
+    <label>Search: </label>
+    <input type="text" id="search"></input>
+    <ul id="results">
+        <!-- Dynamically filled -->
+    </ul>
+    <label id="count"></label>
+    <!-- <script src="../script.js"></script> -->
+    <script>
+        // AJAX Error
+
+        const searchBox = document.querySelector("#search"); //-> <input>
+        const results = document.querySelector("#results"); //-> <ul>
+        const count = document.querySelector("#count"); //-> <ul>
+
+        const notEmpty = input => !!input && input.trim().length > 0;
+
+        // Proxy around CORS -> https://en.wikipedia.org
+        const URL =
+            "https://en.wikipedia.org/external/wikipedia/w/api.php?action=query&format=json&list=search&utf8=1&srsearch=";
+
+        const search$ = Rx.Observable.fromEvent(searchBox, "keyup")
+            .pluck("target", "value")
+            .debounceTime(500)
+            .filter(notEmpty)
+            .do(term => console.log(`Searching with term ${term}`))
+            .map(query => URL + query)
+            .mergeMap(query =>
+                Rx.Observable.ajax(query)
+                .pluck("response", "query", "search")
+                .defaultIfEmpty([])
+            )
+            .map(R.map(R.prop("title")))
+            .do(arr => (count.innerHTML = `${arr.length} results`))
+            .subscribe(arr => {
+                clearResults(results);
+                appendResults(arr, results);
+            });
+
+        function clearResults(container) {
+            while (container.childElementCount > 0) {
+                container.removeChild(container.firstChild);
+            }
+        }
+
+        function appendResults(results, container) {
+            for (let result of results) {
+                let li = document.createElement("li");
+                let text = document.createTextNode(result);
+                li.appendChild(text);
+                container.appendChild(li);
+            }
+        }
+    </script>
+</body>
+
+</html>
